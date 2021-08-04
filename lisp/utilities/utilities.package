@@ -1,0 +1,23 @@
+;;; -*- Lisp -*-
+
+(defpackage "UTILITIES"
+  (:nicknames "UTILS")
+  (:shadowing-import-from "SERIES"
+                          "DEFUN"
+                          "FUNCALL"
+                          "LET"
+                          "LET*"
+                          "MULTIPLE-VALUE-BIND")
+  (:use "COMMON-LISP" "SERIES")
+  (:export
+   "FLOAT-DENOMINATOR"
+   "FLOAT-NUMERATOR"
+   "FLOAT->RATIONAL"
+   "FOLD-LEFT"
+   "FOLD-RIGHT"
+   "INTEGER-LOG"
+   "LEFTMOST-DIGIT"
+   "SQUARE"
+   "XCONS"
+     )
+  )
