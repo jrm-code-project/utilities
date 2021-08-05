@@ -16,20 +16,18 @@
   "Delays an expression and returns a promise."
   `(make-instance 'promise :thunk (lambda () ,expression)))
 
-;;; Note, forcing a thunk could attempt to recursively force the thunk.
-;;; Suppose this recursion bottomed out.  Then as we recursively unwind,
-;;; each pending memoization of the thunk is going to want to run.  But we
-;;; don't let it smash the innermost values already memoized because
-;;; once forced, a promise *always* returns the same values.
-
 (defun force (promise)
   "Returns the values of a promise, forcing it if necessary."
   (check-type promise promise)
+  ;; Ensure the values have been memoized.
   (unless (slot-value promise 'forced?)
     (let ((values (multiple-value-list (funcall (slot-value promise 'values-or-thunk)))))
+      ;; If this is not a recursive call, memoize the result.
+      ;; If this is a recursive call, the result is discarded.
       (unless (slot-value promise 'forced?)
         (setf (slot-value promise 'values-or-thunk) values)
         (setf (slot-value promise 'forced?) t))))
+  ;; Return the memoized values.
   (values-list (slot-value promise 'values-or-thunk)))
 
 (defun forced? (promise)
