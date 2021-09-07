@@ -18,6 +18,8 @@
    "NATURALS"
    "ODDS"
    "ONES"
+   "RDERIV"
+   "ROMBERG"
    "SQUARES"
    "STREAM"
    "STREAM-ACCUMULATE"
