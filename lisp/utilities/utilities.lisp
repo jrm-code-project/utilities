@@ -2,14 +2,33 @@
 
 (in-package "UTILITIES")
 
+(defun average (a b)
+  (/ (+ a b) 2))
+
+;;; Limit is exclusive.
+(defun big-pi (function start limit)
+  (collect-product
+   (map-fn 'number function
+           (scan-range :from start :below limit))))
+
+;;; Limit is exclusive.
+(defun big-sigma (function start limit)
+  (collect-sum
+   (map-fn 'number function
+           (scan-range :from start :below limit))))
+
+(defun binomial (n k)
+  (cond ((zerop k) 1)
+        ((= n k) 1)
+        (t (+ (binomial (- n 1) (- k 1))
+              (binomial (- n 1) k)))))
+
 (defun cross-ratio (a b c d)
   (/ (* (- a c) (- b d))
      (* (- a d) (- b c))))
 
-(defun falling-factorial (x fall)
-  (if (zerop fall)
-      1
-      (* x (falling-factorial (- x 1) (- fall 1)))))
+(defun cube (x)
+  (* x x x))
 
 (declaim (ftype (function ((function (t t &rest t) t) t t &rest t) t) fold-left))
 (defun fold-left (function initial list &rest lists)
@@ -36,6 +55,12 @@
                 ((every #'null tails) initial)
                 (t (error "Non list in fold-left.")))))))
 
+(defun factorial (x)
+  (big-pi #'identity 1 (+ x 1)))
+
+(defun falling-factorial (x fall)
+  (big-pi #'identity (- x (- fall 1)) (+ x 1)))
+
 (defun fold-right (function list final &rest args)
   (labels ((fold-right-1 (tail final)
              (cond ((consp tail)
@@ -45,13 +70,17 @@
 
            (fold-right-n (tails final)
              (cond ((every #'consp tails)
-                    (apply function (append (map 'list #'car tails) (list (fold-right-n (map 'list #'cdr tails) final)))))
+                    (apply function (append (map 'list #'car tails)
+                                            (list (fold-right-n (map 'list #'cdr tails) final)))))
                    ((every #'null tails)
                     final)
                    (t (error "Lists of different lengths or dotted list in fold-right.")))))
     (if (null args)
         (fold-right-1 list final)
         (fold-right-n (list* list final (butlast args)) (car (last args))))))
+
+(defun harmonic (n)
+  (big-sigma (lambda (n) (/ 1 n)) 1 (+ n 2)))
 
 (defun integer-log (n base)
   "Returns two values, the integer-log of <n> in <base>, and the leftmost digit
@@ -62,6 +91,26 @@ in <base>."
         (if (< l base)
             (values (* ilog 2) l)
             (values (+ (* ilog 2) 1) (/ l base))))))
+
+(defun rising-factorial (x rise)
+  (big-pi #'identity x (+ x rise)))
+
+(defun square (number)
+  "Square a number by multiplying it by itself."
+  (* number number))
+
+(defun least-squares (points)
+  (do ((points points (cdr points))
+       (sigma-x 0 (+ sigma-x (caar points)))
+       (sigma-y 0 (+ sigma-y (cdar points)))
+       (sigma-x-squared 0 (+ sigma-x-squared (square (caar points))))
+       (sigma-xy 0 (+ sigma-xy (* (caar points) (cdar points))))
+       (count 0 (+ count 1)))
+      ((null points)
+       (let* ((m (/ (- (* count sigma-xy) (* sigma-x sigma-y))
+                    (- (* count sigma-x-squared) (* sigma-x sigma-x))))
+              (b (/ (- sigma-y (* m sigma-x)) count)))
+         (values m b)))))
 
 (defun leftmost-digit (n base)
   (if (< n base)
@@ -160,22 +209,6 @@ in <base>."
   (etypecase right
     ((or cons null) (list-length>? left right))
     (number (list-length>int? left right))))
-
-(defun rising-factorial (x rise)
-  (if (zerop rise)
-      1
-      (* x (rising-factorial (+ x 1) (- rise 1)))))
-
-(defun sigma (f from through)
-  (let lp ((total 0)
-           (i from))
-       (if (> i through)
-           total
-           (lp (+ total (funcall f i)) (+ i 1)))))
-
-(defun square (number)
-  "Square a number by multiplying it by itself."
-  (* number number))
 
 (defun trapezoid (f a b)
   (lambda (n)

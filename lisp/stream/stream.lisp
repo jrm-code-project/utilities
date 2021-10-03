@@ -3,16 +3,22 @@
 ;; CL:STREAM is shadowed
 (in-package "STREAM")
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
 (defclass stream ()
   ((car :initarg :car
         :initform (error "Required initarg :car omitted.")
         :reader stream-car)
    (delayed-cdr :initarg :delayed-cdr
                 :initform (error "Required initarg :delayed-cdr omitted.")
-                :reader stream-delayed-cdr)))
+                :reader stream-delayed-cdr))))
 
 (defmacro cons-stream (car cdr)
   `(make-instance 'stream :car ,car :delayed-cdr (delay ,cdr)))
+
+(defmacro rec-stream (name value)
+  `(let ((,name nil))
+     (setq ,name ,value)
+     ,name))
 
 (defun stream-cdr (stream)
   (check-type stream stream)
@@ -22,6 +28,65 @@
 
 (defun empty-stream? (thing)
   (null thing))
+
+(defun singleton-stream (element)
+  (cons-stream element the-empty-stream))
+
+(defun infinite-stream (element)
+  (rec-stream stream (cons-stream element stream)))
+
+(defun scan-stream (stream)
+  (declare (optimizable-series-function))
+  (map-fn t #'stream-car (scan-fn 'stream (lambda () stream) #'stream-cdr #'empty-stream?)))
+
+(defun show-stream (stream &optional (length 5))
+  (do ((stream stream (stream-cdr stream))
+       (count 0 (+ count 1)))
+      ((or (empty-stream? stream) (>= count length))
+       (format t " ~:[...~;~]}" (empty-stream? stream)))
+    (format t "~:[ ~;{~]~s~%" (zerop count) (stream-car stream))))
+
+(defun list->stream (list)
+  (fold-right (lambda (element tail)
+                (cons-stream element tail))
+              list
+              the-empty-stream))
+
+(defun stream (&rest elements)
+  (list->stream elements))
+
+(defun stream-fold-right (f stream final)
+  (if (empty-stream? stream)
+      final
+      (funcall f
+               (stream-car stream)
+               (stream-fold-right f (stream-cdr stream) final))))
+
+(defun stream-fold-right-delayed (f stream final)
+  (if (empty-stream? stream)
+      final
+      (funcall f
+               (stream-car stream)
+               (delay (stream-fold-right-delayed f (stream-cdr stream) final)))))
+
+(defun stream-append2-delayed (left delayed-right)
+  (if (empty-stream? left)
+      (force delayed-right)
+      (cons-stream (stream-car left)
+                   (stream-append2-delayed (stream-cdr left) delayed-right))))
+
+(defun stream-interleave2-delayed (left delayed-right)
+  (if (empty-stream? left)
+      (force delayed-right)
+      (cons-stream (stream-car left)
+                   (stream-interleave2-delayed (force delayed-right)
+                                               (stream-delayed-cdr left)))))
+
+(defun stream-flatten-append (stream-of-streams)
+  (stream-fold-right-delayed #'stream-append2-delayed stream-of-streams the-empty-stream))
+
+(defun stream-flatten-interleave (stream-of-streams)
+  (stream-fold-right-delayed #'stream-interleave2-delayed stream-of-streams the-empty-stream))
 
 (defun stream-generate (f value)
   (cons-stream value (stream-generate f (funcall f value))))
@@ -55,8 +120,8 @@
                            streams)
                     (cons-stream (apply function (map 'list #'stream-car streams))
                                  (stream-map-n (map 'list #'stream-cdr streams))))
-                   ((every (lambda (stream)
-                             (eq stream the-empty-stream)) streams)
+                   ((find-if (lambda (stream)
+                               (eq stream the-empty-stream)) streams)
                     the-empty-stream)
                    (t (error "Streams are unequal or something unexpected found.")))))
     (if (consp streams)
@@ -75,6 +140,9 @@
                    ((zerop n) (stream-car stream))
                    (t (l (stream-cdr stream) (- n 1))))))
     (l stream n)))
+
+(defun stream-scale (factor stream)
+  (stream-map (lambda (element) (* element factor)) stream))
 
 (defun stream-truncate-delayed (delayed-stream n-elements)
   (if (zerop n-elements)
@@ -96,15 +164,14 @@
                    (cons-stream (stream-car stream)
                                 (double-stream (stream-cdr stream))))))
 
+(defun power-stream (base)
+  (rec-stream stream (cons-stream 1 (stream-scale base stream))))
+
 (defun ones ()
-  (let ((ones nil))
-    (setq ones (cons-stream 1 ones))
-    ones))
+  (rec-stream ones (cons-stream 1 ones)))
 
 (defun naturals ()
-  (let ((naturals nil))
-    (setq naturals (cons-stream 1 (stream-map #'+ (ones) naturals)))
-    naturals))
+  (rec-stream naturals (cons-stream 1 (stream-map #'+ (ones) naturals))))
 
 (defun integers ()
   (cons-stream 0 (naturals)))
@@ -113,10 +180,30 @@
   (stream-map #'square (naturals)))
 
 (defun evens ()
-  (stream-map (lambda (x) (* x 2)) (integers)))
+  (stream-scale 2 (integers)))
 
 (defun odds ()
   (stream-map #'+ (evens) (ones)))
+
+(defun pi/4-series ()
+  (stream-map #'/ (power-stream -1) (odds)))
+
+(defun partial-sums (series)
+  (stream-accumulate #'+ 0 series))
+
+(defun euler-transform (series)
+  (cons-stream (/ (stream-car series) 2)
+               (euler-transform (stream-map #'average series (stream-cdr series)))))
+
+(defun weighted-average (weight left right)
+  (+ (* (- 1 weight) left)
+     (* weight right)))
+
+(defun weighted-euler-transform (weights series)
+  (cons-stream (* (stream-car series) (stream-car weights))
+               (weighted-euler-transform
+                (stream-cdr weights)
+                (stream-map #'weighted-average weights series (stream-cdr series)))))
 
 (defun archimedes-pi-sequence ()
   (flet ((refine-by-doubling (s)
@@ -196,7 +283,7 @@
   (flet ((next-s (s n)
            (let* ((h (/ (- b a) 2 n))
                   (fx (lambda (i) (funcall f (+ a (* (+ i i -1) h))))))
-             (+ (/ s 2) (* h (sigma fx 1 n))))))
+             (+ (/ s 2) (* h (big-sigma fx 1 (+ n 1)))))))
     (labels ((s-and-n-stream (s n)
                (cons-stream (list s n)
                             (s-and-n-stream (next-s s n) (* n 2)))))
@@ -204,12 +291,11 @@
              (s (* (/ h 2) (+ (funcall f a) (funcall f b)))))
         (stream-map #'car (s-and-n-stream s 1))))))
 
+(defun romberg-stream (f a b)
+  (richardson-sequence (trapezoid-sums f a b) 2 2))
+
 (defun romberg (f a b tolerance)
-  (stream-limit
-   (richardson-sequence (trapezoid-sums f a b)
-                        2
-                        2)
-   tolerance))
+  (stream-limit (romberg-stream f a b) tolerance))
 
 ;(defun pi-estimator (n)
 ;  (funcall (trapezoid (lambda (x) (/ 4 (+ 1 (* x x)))) 0 1) n))

@@ -11,11 +11,19 @@
   (:shadow "LET")
   (:use "COMMON-LISP" "SERIES")
   (:export
+   "AVERAGE"
+   "BIG-PI"
+   "BIG-SIGMA"
+   "BINOMIAL"
    "CROSS-RATIO"
+   "CUBE"
+   "FACTORIAL"
    "FALLING-FACTORIAL"
    "FOLD-LEFT"
    "FOLD-RIGHT"
+   "HARMONIC"
    "INTEGER-LOG"
+   "LEAST-SQUARES"
    "LEFTMOST-DIGIT"
    "LENGTH<?"
    "LENGTH<=?"
@@ -26,7 +34,6 @@
    "LET"
    "NAMED-LAMBDA"
    "RISING-FACTORIAL"
-   "SIGMA"
    "SQUARE"
    "XCONS"
    )
