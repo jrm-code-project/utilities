@@ -33,8 +33,10 @@
    "LENGTH<?"   
    "LET"
    "NAMED-LAMBDA"
+   "REQUIRE-INITARG"
    "RISING-FACTORIAL"
    "SQUARE"
+   "SWAP-ARGS"
    "XCONS"
    )
   )

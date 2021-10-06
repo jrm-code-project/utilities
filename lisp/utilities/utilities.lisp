@@ -210,6 +210,14 @@ in <base>."
     ((or cons null) (list-length>? left right))
     (number (list-length>int? left right))))
 
+(defun require-initarg (initarg)
+  (error "Required initarg ~s omitted." initarg))
+
+(defun swap-args (f)
+  ;; Assumes f is a binary function. (Which is implied by the word "swap".)
+  (lambda (a b)
+    (funcall f b a)))
+
 (defun trapezoid (f a b)
   (lambda (n)
     (let ((dx (/ (- b a) n)))
