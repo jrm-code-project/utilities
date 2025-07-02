@@ -27,9 +27,6 @@
   (/ (* (- a c) (- b d))
      (* (- a d) (- b c))))
 
-(defun cube (x)
-  (* x x x))
-
 (defun factorial (x)
   (big-pi #'identity 1 (+ x 1)))
 
@@ -57,15 +54,11 @@ in <base>."
 (defun rising-factorial (x rise)
   (big-pi #'identity x (+ x rise)))
 
-(defun square (number)
-  "Square a number by multiplying it by itself."
-  (* number number))
-
 (defun least-squares (points)
   (do ((points points (cdr points))
        (sigma-x 0 (+ sigma-x (caar points)))
        (sigma-y 0 (+ sigma-y (cdar points)))
-       (sigma-x-squared 0 (+ sigma-x-squared (square (caar points))))
+       (sigma-x-squared 0 (+ sigma-x-squared (* (caar points)  (caar points))))
        (sigma-xy 0 (+ sigma-xy (* (caar points) (cdar points))))
        (count 0 (+ count 1)))
       ((null points)

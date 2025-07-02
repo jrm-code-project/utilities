@@ -15,7 +15,6 @@
    "BIG-SIGMA"
    "BINOMIAL"
    "CROSS-RATIO"
-   "CUBE"
    "FACTORIAL"
    "FALLING-FACTORIAL"
    "HARMONIC"
@@ -30,7 +29,6 @@
    "LENGTH>=?"
    "LENGTH<?"
    "RISING-FACTORIAL"
-   "SQUARE"
    "SYMBOL-PASTE"
    )
   )
